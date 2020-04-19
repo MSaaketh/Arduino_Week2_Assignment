@@ -1,0 +1,109 @@
+/*REGARDING CIRCUIT DESIGN
+All the power input wires are denoted with red colour,All the ground wires 
+are denoted by black wires,all the output wires from arduino are denoted by
+greenwires and all the input wires from IR sensors are denoted by orange colour
+all the input wires from ultrasonic sensors are denoted by yellow colour
+all the components are numbered from left to right in ascending order
+*/
+
+#include<Servo.h>
+#include<IRremote.h>
+Servo myservo1,myservo2;//servos
+int us_1_trig=A0,us_2_trig=A1,us_1_echo=4,us_2_echo=2;//ultrasonic Sensors
+int irv[]={0,0,0,0};//booleans to store whether item is ordered or not
+int led[]={13,12,11,10};//led pins
+long duration1,distance1,duration2,distance2;
+int  dus=100,d1=500,d2=2000,d5=5000;
+IRrecv recv();
+decode_results results;
+void setup() 
+{
+// put your setup code here, to run once:
+Serial.begin (9600);
+  //for ultrasonic Sensors
+pinMode(us_1_trig, OUTPUT);
+pinMode(us_1_echo, INPUT);
+pinMode(us_2_trig, OUTPUT);
+pinMode(us_2_echo, INPUT);
+  //for Servos
+myservo1.attach(5);
+myservo2.attach(3);
+myservo1.write(0);
+myservo2.write(0);
+  //for leds
+  for(int i=0;i<4;i++)
+  {
+    pinMode(led[i],OUTPUT);
+  }
+}
+void loop()
+{
+// put your main code here, to run repeatedly:
+
+  //At ingate(car enters)
+digitalWrite(us_1_trig, LOW);
+delayMicroseconds(100);
+digitalWrite(us_1_trig, HIGH);
+delayMicroseconds(100);
+digitalWrite(us_1_trig, LOW);
+duration1 = pulseIn(us_1_echo, HIGH);
+distance1 = duration1/52.8;
+Serial.println(distance1);
+if(distance1 < 20)
+{
+myservo1.write(90);
+delay(d2);
+myservo1.write(0);
+}
+else myservo1.write(0);
+delay(d5);
+  //At window 1(to give order using ir sensors)
+  for(int j=0;j<4;j++)
+  {
+    IRrecv recv(j+6);
+    decode_results output;
+    recv.enableIRIn();
+    Serial.print("Item ");
+    Serial.println(j+1);
+    Serial.println("Waiting for yes or no");
+    delay(d5);
+   if (recv.decode(&output))
+   {
+    Serial.println(output.value, HEX);
+    if(output.value==0xFD30CF)irv[j]=0;//by pressing 0 he don't want item 1
+    if(output.value==0xFD08F7)irv[j]=1;//by pressing 1 he ordered item 1
+    Serial.println(irv[j]);
+   }
+    
+      
+  }
+//At Window 3(leds will glow after ordered items are delivered)
+  for(int k=0;k<4;k++)
+    {
+      if(irv[k]==1)
+      {
+        digitalWrite(led[k],HIGH);
+        delay(1000);
+        digitalWrite(led[k],LOW);
+        irv[k]=0;
+      }
+    }
+//At outgate(car goes out)
+digitalWrite(us_2_trig, LOW);
+delayMicroseconds(100);
+digitalWrite(us_2_trig, HIGH);
+delayMicroseconds(100);
+digitalWrite(us_2_trig, LOW);
+duration2 = pulseIn(us_2_echo, HIGH);
+distance2 = duration2/52.8;
+Serial.println(distance2);
+if(distance2 < 30)
+{
+myservo2.write(90);
+delay(d2);
+myservo2.write(0);
+}
+else myservo2.write(0);
+delay(d2);
+} 
+  
